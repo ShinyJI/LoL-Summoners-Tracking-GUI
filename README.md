@@ -17,8 +17,8 @@ HOW TO USE :
 
 1) Download the python script.
 2) Fill the 3 fields at the end of the file (my_name, my_region, api_key).
-  - my_name and my_region are the summoner name and region of the person you want to spectate (probably you).
-  - An API Key is a personal key that gets delivered by Riot Games for free on https://developer.riotgames.com/, once you've logged in with your Riot games account.
+      - my_name and my_region are the summoner name and region of the person you want to spectate (probably you).
+      - An API Key is a personal key that gets delivered by Riot Games for free on https://developer.riotgames.com/, once you've logged in with your Riot games account.
 3) In the directory where the python file is, you must have 2 other folders:
       - An empty folder called "Champions_Icons". The champion icons are going to get downloaded into this folder.
       - A folder i give you called "Spells_Icons". It contains the spell icons displayed on the buttons.
