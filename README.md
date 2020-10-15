@@ -1,4 +1,4 @@
-# LoL-Summoner-Tracking-GUI
+# LoL-Summoners-Tracking-GUI
 
 Hello, this is my first ever application !
 
