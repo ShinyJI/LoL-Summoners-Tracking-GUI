@@ -22,6 +22,7 @@ HOW TO USE :
 3) In the directory where the python file is, you must have 2 other folders:
       - An empty folder called "Champions_Icons". The champion icons are going to get downloaded into this folder.
       - A folder called "Spells_Icons". It contains the spell icons displayed on the buttons.
+     
 I added to the project a .rar file than you can download and unzip in the same directory as the script, composed of both the folders i juste cited.
 4) Launch a League of Legend game.
 5) Set your game to windowed or bordeless mode so the window can be displayed on top.
