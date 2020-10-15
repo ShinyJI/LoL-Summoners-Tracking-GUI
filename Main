@@ -1,0 +1,235 @@
+import requests, shutil, os
+from riotwatcher import LolWatcher, ApiError
+from tkinter import *
+from PIL import Image, ImageTk
+from threading import *
+
+SPELLS = {
+    1: "Cleanse",
+    3: "Exhaust",
+    4: "Flash",
+    6: "Ghost",
+    7: "Heal",
+    11: "Smite",
+    12: "Teleport",
+    13: "Clarity",
+    14: "Ignite",
+    21: "Barrier",
+}
+
+COOLDOWNS = {
+    "Cleanse": 210,
+    "Exhaust": 210,
+    "Flash": 300,
+    "Ghost": 210,
+    "Heal": 240,
+    "Smite": 90,
+    "Teleport": 360,
+    "Clarity": 240,
+    "Ignite": 180,
+    "Barrier": 180,
+}
+
+cosmic_insight_id = 8347
+
+lastClickX = 0
+lastClickY = 0
+
+class Spell_Button(Button):
+
+    is_ready_spell = True
+    ready_image = object()
+    on_cd_image = object()
+    timer = object()
+    wait_time = 0
+
+    def __init__(self, window, ready_image, on_cd_image, nom_spell, cosmic_insight):
+        Button.__init__(self, window, image=ready_image, command=self.on_click)
+        self.ready_image = ready_image
+        self.on_cd_image = on_cd_image
+        self.nom_spell = nom_spell
+        self.wait_time = COOLDOWNS[nom_spell]
+        if cosmic_insight:
+            self.wait_time = self.wait_time * 0.95
+        if is_ARAM:
+            self.wait_time = self.wait_time * 0.6
+
+    def on_click(self):
+        # Starts timer
+        if self.is_ready_spell:
+            self.configure(image=self.on_cd_image)
+            self.timer = Timer(self.wait_time, self.ready_spell)
+            self.timer.start()
+            self.is_ready_spell = False
+        # Spell is on cd
+        else:
+            self.ready_spell()
+            self.timer.cancel()
+
+    # Ready the spell (called by the timer)
+    def ready_spell(self):
+        self.configure(image=self.ready_image)
+        self.is_ready_spell = True
+
+
+# List of player's informations
+def get_players():
+    try:
+        current_game = watcher.spectator.by_summoner(my_region, my_id)
+        return current_game["participants"]
+    except:
+        return False
+
+
+# Is the game an ARAM
+def is_ARAM():
+    current_game = watcher.spectator.by_summoner(my_region, my_id)
+    return current_game["gameMode"] == "ARAM"
+
+
+# Returns the team ID
+def get_my_team(players_list):
+    for player in players_list:
+        if my_id == player["summonerId"]:
+            return player["teamId"]
+
+
+# Gets championId, both Spells and gameType
+def get_ennemy_info(players_list):
+    my_teamId = get_my_team(participants)
+    L = list()
+    for player in players_list:
+        d = dict()
+        if player["teamId"] != my_teamId:
+            d["championId"] = player["championId"]
+            d["spell1Id"] = player["spell1Id"]
+            d["spell2Id"] = player["spell2Id"]
+            # If he has the rune
+            if (cosmic_insight_id in player["perks"]["perkIds"]):
+                d["cosmic_insight"] = True
+            else:
+                d["cosmic_insight"] = False
+            L.append(d)
+    return L
+
+# Downloads the champion icon
+def download_champion_image(championId):
+    link = (
+        "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/"
+        + str(championId)
+        + ".png"
+    )
+    path = os.getcwd() + "\\Champions_Icons\\" + str(championId) + ".png"
+    r = requests.get(link, stream=True)
+    if r.status_code == 200:
+        f = open(path, "wb")
+        r.raw.decode_content = True
+        shutil.copyfileobj(r.raw, f)
+        return True
+    return False
+
+
+def load_champions_and_spells_images(info_list):
+    i = 0
+    L = list()
+    for ennemy in info_list:
+        download_champion_image(ennemy["championId"])
+        add_champion_image(ennemy["championId"], i, 0)
+        add_spell_image(ennemy["spell1Id"], i, 1, ennemy["cosmic_insight"])
+        add_spell_image(ennemy["spell2Id"], i, 2, ennemy["cosmic_insight"])
+        i += 1
+
+
+# Returns a resized ImageTk from a path
+def path_to_imageTk(path):
+    try:
+        image = Image.open(path)
+        image = image.resize((30, 30), Image.ANTIALIAS)
+        image = ImageTk.PhotoImage(image)
+        return image
+    except:
+        return False
+
+
+# Adds spell buttons to the window
+def add_spell_image(spellId, row, column, cosmic_insight):
+    directory = os.getcwd() + "\\Spells_Icons\\"
+    ready_image_path = directory + SPELLS[spellId] + ".jpg"
+    on_cd_image_path = directory + SPELLS[spellId] + "_grey.jpg"
+
+    ready_image = path_to_imageTk(ready_image_path)
+    on_cd_image = path_to_imageTk(on_cd_image_path)
+
+    if ready_image and on_cd_image:
+        button = Spell_Button(
+            window,
+            ready_image=ready_image,
+            on_cd_image=on_cd_image,
+            nom_spell=SPELLS[spellId],
+            cosmic_insight=cosmic_insight,
+        )
+        button.image = button
+        button.grid(row=row, column=column)
+        return True
+    else:
+        return False
+
+
+# Adds chamions images to the window
+def add_champion_image(championId, row, column):
+    path = os.getcwd() + "\\Champions_Icons\\" + str(championId) + ".png"
+    image = path_to_imageTk(path)
+    label = Label(window, image=image)
+    label.image = image
+    label.grid(row=row, column=column)
+
+
+# Moving the window
+def SaveLastClickPos(event):
+    global lastClickX, lastClickY
+    lastClickX = event.x
+    lastClickY = event.y
+
+
+# Moving the window
+def Dragging(event):
+    x, y = (
+        event.x - lastClickX + window.winfo_x(),
+        event.y - lastClickY + window.winfo_y(),
+    )
+    window.geometry("+%s+%s" % (x, y))
+
+
+def close(event):
+    window.destroy()
+
+
+# Creates the graphic window
+def make_window():
+    window = Tk()
+    window.attributes("-topmost", True)
+    window.overrideredirect(True)
+    window.bind("<Button-1>", SaveLastClickPos)
+    window.bind("<B1-Motion>", Dragging)
+    window.bind("<Escape>", close)
+    return window
+
+my_name = "Summoner_name"    # Write your name here
+
+my_region = "Region_name"  # Write your region here
+
+api_key = "XXXX-XXX..." # Write your key here
+
+watcher = LolWatcher(api_key)
+me = watcher.summoner.by_name(my_region, my_name)
+my_id = me["id"]
+my_account_id = me["accountId"]
+
+window = make_window()
+
+participants = get_players()
+is_ARAM = is_ARAM()
+info = get_ennemy_info(participants)
+load_champions_and_spells_images(info)
+
+window.mainloop()
